@@ -3,6 +3,7 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import "dotenv/config";
 import express from "express";
+import { body, validationResult } from "express-validator";
 import contactMail from "./contactMail";
 
 interface StringMap {
@@ -26,31 +27,47 @@ const corsOptions = {
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 sgMail.setApiKey(process.env.SG_APIKEY);
-app.post("/", cors(corsOptions), (req, res) => {
-  const query: StringMap = req.query as StringMap;
-  const msg = {
-    to: process.env.EMAIL_TO,
-    from: process.env.EMAIL_FROM,
-    subject: process.env.SUBJECT,
-    html: contactMail(
-      query.email,
-      query.phone,
-      query.message,
-      query.name,
-      query.company
-    ),
-  };
-  sgMail
-    .send(msg)
-    .then(() => {
-      res.send("Email sent");
-    })
-    .catch(() => {
-      res.send(new Error("Email not sent").message);
-    });
-});
+app.post(
+  "/",
+  cors(corsOptions),
+  body("email").isEmail(),
+  body("phone").isString(),
+  body("message").isString(),
+  body("message").isLength({ min: 30 }),
+  body("name").isString(),
+  body("company").isString(),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    const body: StringMap = req.body as StringMap;
+    console.log(body);
+    const msg = {
+      to: process.env.EMAIL_TO,
+      from: process.env.EMAIL_FROM,
+      subject: process.env.SUBJECT,
+      html: contactMail(
+        body.email,
+        body.phone,
+        body.message,
+        body.name,
+        body.company
+      ),
+    };
+    sgMail
+      .send(msg)
+      .then(() => {
+        res.send("Email sent");
+      })
+      .catch(() => {
+        res.send(new Error("Email not sent").message);
+      });
+  }
+);
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
