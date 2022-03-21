@@ -1,48 +1,55 @@
+import sgMail from "@sendgrid/mail";
 import bodyParser from "body-parser";
 import cors from "cors";
 import "dotenv/config";
 import express from "express";
-import * as mailjet from "node-mailjet";
+import contactMail from "./contactMail";
+
+interface StringMap {
+  [key: string]: string;
+}
+const isDevMode = process.env.NODE_ENV === "development";
+const whitelist = process.env.WHITELIST.split(",");
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isDevMode) {
+      callback(null, true);
+    } else {
+      if (whitelist.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS").message);
+      }
+    }
+  },
+};
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.post("/", (req, res) => {
-  const request = mailjet
-    .connect(process.env.MJ_APIKEY_PUBLIC, process.env.MJ_APIKEY_PRIVATE)
-    .post("send", { version: "v3.1" })
-    .request({
-      Messages: [
-        {
-          From: {
-            Email: "hello@studiowawww.com",
-            Name: "New contact from the website",
-          },
-          To: [
-            {
-              Email: "passenger1@gmail.com",
-              Name: "passenger 1",
-            },
-          ],
-          TemplateID: 3786116,
-          TemplateLanguage: true,
-          Subject: "New contact from the website",
-          Variables: {
-            name: "Antoine Tardivel",
-            email: "passenger1@example.com",
-            message: "No message content.",
-          },
-        },
-      ],
-    });
-  request
-    .then((result) => {
-      console.log(result.body);
+sgMail.setApiKey(process.env.SG_APIKEY);
+app.post("/", cors(corsOptions), (req, res) => {
+  const query: StringMap = req.query as StringMap;
+  const msg = {
+    to: process.env.EMAIL_TO,
+    from: process.env.EMAIL_FROM,
+    subject: process.env.SUBJECT,
+    html: contactMail(
+      query.email,
+      query.phone,
+      query.message,
+      query.name,
+      query.company
+    ),
+  };
+  sgMail
+    .send(msg)
+    .then(() => {
+      res.send("Email sent");
     })
-    .catch((err) => {
-      console.log(err.statusCode);
+    .catch(() => {
+      res.send(new Error("Email not sent").message);
     });
-  res.send("Mail sent!");
 });
 
 const port = process.env.PORT || 8080;
