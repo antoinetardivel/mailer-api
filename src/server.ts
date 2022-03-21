@@ -61,7 +61,7 @@ app.post(
     sgMail
       .send(msg)
       .then(() => {
-        res.send("Email sent");
+        res.sendStatus(200);
       })
       .catch(() => {
         res.send(new Error("Email not sent").message);
