@@ -5,8 +5,8 @@
   "author": "Antoine Tardivel",
   "license": "MIT",
   "scripts": {
-    "start": "ts-node ./src/server.ts",
-    "start:prod": "npm run build && node ./dist/src/server.js",
+    "start:local": "ts-node ./src/server.ts",
+    "start": "npm run build && node ./dist/src/server.js",
     "dev": "./node_modules/nodemon/bin/nodemon.js",
     "build": "npx tsc"
   },
